@@ -3,27 +3,27 @@ require 'json'
 
 def select_request
 	begin
-		puts "Do you want to make a 'GET' request or 'POST' request?"
+		puts "Do you want to make a 'GET' request or 'POST' request, or 'QUIT' to quit?"
 		choice = gets.chomp.upcase
-		raise  StandardError if choice != "GET" && choice != "POST"
+		raise  StandardError if choice != "GET" && choice != "POST" && choice != "QUIT"
 	rescue StandardError
-		puts "Type 'POST' or 'GET'"
+		puts "Type 'POST', 'GET', or 'QUIT'"
 		retry
 	else
 		choice
 	end
 end
 
-def get_info
+def get_info(hash)
 	puts "What's your viking's name?"
 	name = gets.chomp
 	puts "What's your viking's email?"
 	email = gets.chomp
-	viking_hash[:viking] = {
+	hash[:viking] = {
 		:name => name,
 		:email => email
 	}
-	viking_hash
+	hash
 end
 
 def make_GET(socket)
@@ -33,13 +33,13 @@ def make_GET(socket)
 	socket.read
 end
 
-def make_POST(socket)
+def make_POST(socket,hash)
 	path = "/thanks.html"
-	get_info
+	viking_hash = get_info(hash)
 	content = viking_hash.to_json
-	request = "POST #{path} HTTP/1.0\n" + "From: #{viking_hash[:viking][:email]}\n" + "Content-Type: application/x-www-form-urlencoded\n" + "Content-Length: #{content.length}\r\n\r\n"
-
-
+	request = "POST #{path} HTTP/1.0\n" + "From: #{viking_hash[:viking][:email]}\n" + "Content-Type: application/x-www-form-urlencoded\n" + "Content-Length: #{content.length}\r\n\r\n" + content + "\r\n\r\n"
+	socket.print(request)
+	socket.read
 end
 
 host = "localhost"
@@ -52,11 +52,11 @@ case choice
 when "GET"
 	response = make_GET(socket)
 	headers, body = response.split("\r\n\r\n", 2)
+	print response
 when "POST"
-
+	response = make_POST(socket,viking_hash)
+	headers, body = response.split("\r\n\r\n", 2)
+	print body.chomp
+when "QUIT"
+	socket.close
 end
-
-
-#print headers
-#print body
-#print response

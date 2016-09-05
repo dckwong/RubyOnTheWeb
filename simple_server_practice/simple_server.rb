@@ -1,4 +1,5 @@
 require 'socket'
+require 'json'
 
 def do_GET(client,response)
 	path = /\S+/.match(response[4..-1])
@@ -26,20 +27,47 @@ def check_GET_or_POST(client,response)
 end
 
 def do_POST(client,response)
-	
+	print response
+	head,body = response.split("\r\n\r\n",2)
+	client.puts body
+	params = {}
+	JSON.parse(body).each do |key,val|
+		params[key] = val
+	end
+	thanks = []
+	File.open("thanks.html",'r') do |file|
+		thanks = file.readlines
+	end
+	new_thanks = []
+	thanks.each do |line|
+		new_thanks << line.gsub("<%= yield %>", "<li>Name: #{params['viking']['name']}</li><li>Email: #{params['viking']['email']}</li>")
+	end
+	client.puts new_thanks.join("")
+	new_thanks
 end
 
 server = TCPServer.open(2345)
 loop do
 	client = server.accept
-	response = client.get
+	response = client.gets
 	case check_GET_or_POST(client,response)
 	when "GET"
 		do_GET(client,response)
 	when "POST"
-		do_POST(client,response)
+		resp = []
+		resp << response
+		while line = client.gets
+			if line
+				resp << line
+			else
+				resp << "\n"
+			end
+			break if resp.length == 7
+		end
+		do_POST(client,resp.join(""))
 	when "Neither"
 		client.puts("Not a valid request")
+	end
 	client.close
 end
 
